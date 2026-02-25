@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Architect // Ghost Labs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* =========================================
+           DESIGN TOKENS
+        ========================================= */
+        :root {
+            --bg:        #0e0e10;
+            --surface:   #161618;
+            --raised:    #1c1c1f;
+            --border:    rgba(255,255,255,0.06);
+            --coral:     #FF6B47;
+            --gold:      #E8C547;
+            --purple:    #8B6FE8;
+            --green:     #4ADE80;
+            --red:       #F87171;
+            --dim:       #5a5a6a;
+            --text:      #d4d4df;
+            --text-muted:#7a7a8a;
+
+            --shadow-raise:  6px 6px 14px #08080a, -3px -3px 10px #1e1e24;
+            --shadow-inset:  inset 3px 3px 8px #08080a, inset -2px -2px 6px #1e1e24;
+            --shadow-float:  0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+            --radius:     14px;
+            --radius-sm:  8px;
+            --editor-bg:  #0a0a0c;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+        }
+
+        /* =========================================
+           LAYOUT
+        ========================================= */
+        .shell {
+            width: 100%;
+            max-width: 1060px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 32px;
+            background: var(--surface);
+            box-shadow: var(--shadow-raise);
+            border-radius: var(--radius) var(--radius) 0 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-icon {
+            width: 32px; height: 32px;
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-raise);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+        .brand-name {
+            font-size: 11px; font-weight: 800;
+            letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold);
+        }
+        .brand-sub {
+            font-size: 10px; color: var(--dim);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .top-bar .actions { display: flex; gap: 10px; align-items: center; }
+
+        .workspace {
+            display: flex;
+            background: var(--surface);
+            box-shadow: var(--shadow-float);
+            border-radius: 0 0 var(--radius) var(--radius);
+            overflow: hidden;
+            min-height: 580px;
+        }
+
+        /* =========================================
+           LEFT PANEL
+        ========================================= */
+        .panel-controls {
+            width: 280px;
+            min-width: 280px;
+            background: var(--raised);
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-right: 1px solid var(--border);
+        }
+
+        .section-label {
+            font-size: 9px; font-weight: 700;
+            letter-spacing: 0.2em; text-transform: uppercase;
+            color: var(--dim); margin-bottom: 8px; margin-top: 18px;
+        }
+        .section-label:first-child { margin-top: 0; }
+
+        .path-display {
+            background: var(--bg);
+            box-shadow: var(--shadow-inset);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            font-family: 'Space Mono', monospace;
+            font-size: 11px; color: var(--purple);
+            word-break: break-all; line-height: 1.5; min-height: 38px;
+        }
+
+        .neo-input {
+            width: 100%;
+            background: var(--bg); box-shadow: var(--shadow-inset);
+            border: none; border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            font-family: 'Space Mono', monospace; font-size: 12px; color: var(--text);
+            outline: none; transition: box-shadow 0.2s ease;
+        }
+        .neo-input::placeholder { color: var(--dim); }
+        .neo-input:focus { box-shadow: var(--shadow-inset), 0 0 0 1px rgba(139,111,232,0.3); }
+
+        .btn {
+            width: 100%; border: none; border-radius: var(--radius-sm);
+            padding: 11px 16px;
+            font-family: 'Syne', sans-serif; font-size: 11px;
+            font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.15s ease; margin-top: 8px;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+        .btn-folder {
+            background: var(--raised); box-shadow: var(--shadow-raise); color: var(--coral);
+        }
+        .btn-folder:hover:not(:disabled) { box-shadow: var(--shadow-raise), 0 0 16px rgba(255,107,71,0.12); }
+        .btn-folder:active:not(:disabled) { box-shadow: var(--shadow-inset); }
+
+        .btn-file {
+            background: var(--raised); box-shadow: var(--shadow-raise); color: var(--gold);
+        }
+        .btn-file:hover:not(:disabled) { box-shadow: var(--shadow-raise), 0 0 16px rgba(232,197,71,0.12); }
+        .btn-file:active:not(:disabled) { box-shadow: var(--shadow-inset); }
+
+        .btn-danger {
+            background: transparent; box-shadow: none;
+            color: #5a2020; font-size: 10px;
+        }
+        .btn-danger:hover:not(:disabled) { color: #ff4444; }
+
+        .btn-export {
+            background: var(--raised); box-shadow: var(--shadow-raise);
+            color: var(--text); border: 1px solid var(--border); margin-top: auto;
+        }
+        .btn-export:hover { border-color: var(--coral); color: var(--coral); }
+
+        .btn-import {
+            background: var(--raised); box-shadow: var(--shadow-raise);
+            color: var(--purple); border: 1px solid var(--border);
+        }
+        .btn-import:hover { border-color: var(--purple); }
+
+        .divider { height: 1px; background: var(--border); margin: 16px 0; }
+        .spacer { flex: 1; }
+
+        /* =========================================
+           RIGHT PANEL — TREE
+        ========================================= */
+        .panel-tree {
+            flex: 1; padding: 28px;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .tree-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px;
+        }
+        .tree-title {
+            font-size: 9px; font-weight: 700;
+            letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim);
+        }
+        .tree-stats {
+            font-family: 'Space Mono', monospace; font-size: 10px; color: var(--dim);
+        }
+        .tree-scroll {
+            flex: 1; overflow-y: auto;
+            background: var(--bg); box-shadow: var(--shadow-inset);
+            border-radius: var(--radius); padding: 20px;
+        }
+        .tree-scroll::-webkit-scrollbar { width: 6px; }
+        .tree-scroll::-webkit-scrollbar-track { background: transparent; }
+        .tree-scroll::-webkit-scrollbar-thumb { background: #2a2a34; border-radius: 10px; }
+
+        /* =========================================
+           TREE NODES
+        ========================================= */
+        .tree-node { user-select: none; }
+        .tree-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 10px; border-radius: var(--radius-sm);
+            cursor: pointer; border-left: 2px solid transparent;
+            transition: background 0.15s ease, border-color 0.15s ease;
+            font-size: 13px; position: relative;
+        }
+        .tree-row:hover { background: rgba(255,255,255,0.04); }
+        .tree-row.selected {
+            background: rgba(139,111,232,0.1);
+            border-left-color: var(--purple);
+            box-shadow: var(--shadow-inset);
+        }
+        .tree-row.drag-over { background: rgba(139,111,232,0.2); border-left-color: var(--gold); }
+        .tree-row.drag-source { opacity: 0.4; }
+
+        .tree-icon { font-size: 14px; flex-shrink: 0; width: 18px; text-align: center; }
+        .tree-name { flex: 1; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+        .tree-name.file-name {
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            font-weight: 400; color: var(--text-muted);
+        }
+        .tree-badge {
+            font-family: 'Space Mono', monospace; font-size: 9px;
+            color: var(--dim); padding: 2px 6px;
+            background: var(--raised); border-radius: 4px;
+        }
+        .tree-children {
+            margin-left: 20px; padding-left: 12px;
+            border-left: 1px solid rgba(255,255,255,0.05);
+        }
+        .drag-handle {
+            color: var(--dim); font-size: 12px; cursor: grab;
+            opacity: 0; transition: opacity 0.15s ease; flex-shrink: 0;
+        }
+        .tree-row:hover .drag-handle { opacity: 1; }
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 300px; gap: 12px; color: var(--dim);
+        }
+        .empty-state .empty-icon { font-size: 40px; opacity: 0.3; }
+        .empty-state .empty-text { font-size: 12px; text-align: center; line-height: 1.6; }
+
+        /* =========================================
+           GHOST EDITOR OVERLAY
+        ========================================= */
+        #editor-overlay {
+            position: fixed; inset: 0;
+            background: rgba(14,14,16,0.97);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex; flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        #editor-overlay.open { transform: translateX(0); }
+
+        .editor-top-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        /* Boilerplate inject bar */
+        .inject-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 24px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            flex-shrink: 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        .inject-bar::-webkit-scrollbar { display: none; }
+        .inject-label {
+            font-size: 9px; text-transform: uppercase;
+            letter-spacing: 0.18em; color: var(--dim);
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-template {
+            background: var(--raised); border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 5px 12px; border-radius: 6px;
+            font-family: 'Syne', sans-serif;
+            font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+            white-space: nowrap; cursor: pointer;
+            transition: all 0.15s ease; flex-shrink: 0;
+        }
+        .btn-template:hover { color: var(--gold); border-color: var(--gold); }
+        .btn-template:active { transform: scale(0.96); }
+
+        /* Editor body: line numbers + textarea */
+        .editor-body {
+            flex: 1; display: flex; overflow: hidden;
+            padding: 0;
+        }
+
+        .line-numbers {
+            background: var(--editor-bg);
+            padding: 20px 0 20px 12px;
+            font-family: 'Space Mono', monospace; font-size: 13px; line-height: 1.7;
+            color: var(--dim); text-align: right;
+            min-width: 48px; overflow: hidden;
+            flex-shrink: 0; border-right: 1px solid var(--border);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #editor-textarea {
+            flex: 1;
+            background: var(--editor-bg);
+            color: var(--text);
+            font-family: 'Space Mono', monospace; font-size: 13px; line-height: 1.7;
+            padding: 20px;
+            border: none; outline: none; resize: none;
+            overflow-y: auto; overflow-x: auto;
+            tab-size: 2;
+            -moz-tab-size: 2;
+            white-space: pre;
+            caret-color: var(--gold);
+            -webkit-overflow-scrolling: touch;
+        }
+        #editor-textarea::selection {
+            background: rgba(139,111,232,0.3);
+        }
+        #editor-textarea::-webkit-scrollbar { width: 6px; height: 6px; }
+        #editor-textarea::-webkit-scrollbar-thumb { background: #2a2a34; border-radius: 10px; }
+
+        /* Editor status bar */
+        .editor-status {
+            display: flex; align-items: center; gap: 16px;
+            padding: 8px 24px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            font-family: 'Space Mono', monospace; font-size: 10px;
+            color: var(--dim); flex-shrink: 0;
+        }
+        .editor-status .status-item { display: flex; align-items: center; gap: 6px; }
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--green);
+            animation: pulse-dot 2s ease infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+        }
+
+        /* =========================================
+           PREVIEW PANEL
+        ========================================= */
+        #preview-container {
+            display: none; flex: 1; flex-direction: column; position: relative; overflow: hidden;
+        }
+        #preview-container.visible { display: flex; }
+
+        #preview-iframe {
+            flex: 1; border: none; background: white;
+        }
+
+        /* Ghost Console HUD */
+        #console-hud {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 35%;
+            background: rgba(10,10,12,0.92);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex; flex-direction: column;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transform: translateY(100%);
+            transition: transform 0.25s ease;
+        }
+        #console-hud.open { transform: translateY(0); }
+
+        .console-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            flex-shrink: 0;
+        }
+        .console-title {
+            font-family: 'Space Mono', monospace; font-size: 9px;
+            text-transform: uppercase; letter-spacing: 0.18em; color: var(--gold);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .console-badge {
+            background: var(--raised); padding: 2px 7px; border-radius: 4px;
+            color: var(--dim); font-size: 9px; min-width: 18px; text-align: center;
+        }
+        .console-actions { display: flex; gap: 8px; }
+        .console-btn {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--dim); padding: 3px 8px;
+            border-radius: 4px; font-size: 9px; cursor: pointer;
+            font-family: 'Space Mono', monospace;
+            transition: all 0.15s;
+        }
+        .console-btn:hover { color: var(--text); border-color: var(--dim); }
+
+        #console-log-list {
+            flex: 1; overflow-y: auto; padding: 8px 14px;
+            display: flex; flex-direction: column; gap: 2px;
+            font-family: 'Space Mono', monospace; font-size: 11px; line-height: 1.5;
+            -webkit-overflow-scrolling: touch;
+        }
+        #console-log-list::-webkit-scrollbar { width: 4px; }
+        #console-log-list::-webkit-scrollbar-thumb { background: #2a2a34; }
+
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            word-break: break-all;
+        }
+        .log-entry.log  { color: var(--text-muted); }
+        .log-entry.error { color: var(--red); }
+        .log-entry.warn  { color: var(--gold); }
+        .log-entry.info  { color: var(--purple); }
+        .log-prefix { color: var(--dim); margin-right: 6px; }
+
+        /* Preview toggle buttons */
+        .editor-tabs {
+            display: flex; gap: 4px;
+        }
+        .tab-btn {
+            padding: 6px 14px;
+            border-radius: 6px; border: 1px solid var(--border);
+            background: transparent;
+            font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700;
+            letter-spacing: 0.1em; text-transform: uppercase;
+            color: var(--dim); cursor: pointer; transition: all 0.15s;
+        }
+        .tab-btn.active { background: var(--raised); color: var(--text); border-color: var(--dim); }
+        .tab-btn:hover:not(.active) { color: var(--text-muted); }
+
+        /* =========================================
+           IMPORT MODAL
+        ========================================= */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: all; }
+        .modal {
+            background: var(--raised); box-shadow: var(--shadow-float);
+            border-radius: var(--radius); border: 1px solid var(--border);
+            width: 560px; max-width: 95vw; padding: 32px;
+            transform: scale(0.95); transition: transform 0.2s ease;
+        }
+        .modal-overlay.open .modal { transform: scale(1); }
+        .modal-title {
+            font-size: 13px; font-weight: 800;
+            letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--gold); margin-bottom: 6px;
+        }
+        .modal-desc {
+            font-size: 11px; color: var(--dim); margin-bottom: 20px;
+            font-family: 'Space Mono', monospace; line-height: 1.7;
+        }
+        .modal-textarea {
+            width: 100%; height: 200px;
+            background: var(--bg); box-shadow: var(--shadow-inset);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            padding: 14px;
+            font-family: 'Space Mono', monospace; font-size: 12px; color: var(--text);
+            outline: none; resize: vertical; line-height: 1.6;
+        }
+        .modal-textarea:focus { border-color: rgba(139,111,232,0.4); }
+        .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .modal-actions .btn { width: auto; flex: 1; }
+        .btn-confirm {
+            background: var(--purple); color: white;
+            box-shadow: var(--shadow-raise), 0 0 20px rgba(139,111,232,0.2);
+        }
+        .btn-cancel { background: var(--raised); box-shadow: var(--shadow-raise); color: var(--dim); }
+        .format-hint {
+            font-family: 'Space Mono', monospace; font-size: 10px;
+            color: var(--dim); background: var(--bg); border-radius: var(--radius-sm);
+            padding: 10px 14px; margin-top: 12px; line-height: 1.8;
+            border-left: 2px solid var(--purple);
+        }
+
+        /* =========================================
+           TOAST
+        ========================================= */
+        .toast {
+            position: fixed; bottom: 28px; right: 28px;
+            background: var(--raised); box-shadow: var(--shadow-float);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            padding: 12px 18px;
+            font-size: 12px; font-family: 'Space Mono', monospace; color: var(--text);
+            z-index: 9999;
+            transform: translateY(20px); opacity: 0;
+            transition: all 0.25s ease; pointer-events: none;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-left: 3px solid var(--gold); }
+        .toast.error   { border-left: 3px solid var(--red); }
+        .toast.info    { border-left: 3px solid var(--purple); }
+
+        /* =========================================
+           RESPONSIVE
+        ========================================= */
+        @media (max-width: 640px) {
+            body { padding: 0; align-items: flex-start; }
+            .shell { max-width: 100%; }
+            .top-bar { padding: 14px 16px; border-radius: 0; }
+            .workspace { flex-direction: column; border-radius: 0; min-height: auto; }
+            .panel-controls { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border); }
+            .shell { border-radius: 0; }
+            .top-bar { border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== IMPORT MODAL ===== -->
+<div class="modal-overlay" id="import-modal">
+    <div class="modal">
+        <div class="modal-title">↑ Import Structure</div>
+        <div class="modal-desc">
+            Paste a tree-style structure. Use indentation (2 spaces or tab) to define nesting.<br>
+            Folders end with <code>/</code>, files include their extension.
+        </div>
+        <textarea class="modal-textarea" id="import-textarea" placeholder="src/&#10;  components/&#10;    Button.jsx&#10;    Modal.jsx&#10;  App.jsx&#10;public/&#10;  index.html&#10;package.json"></textarea>
+        <div class="format-hint">
+            src/ → folder &nbsp;&nbsp; index.html → file<br>
+            Indentation defines nesting depth
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-cancel" id="import-cancel-btn">Cancel</button>
+            <button class="btn btn-confirm" id="import-confirm-btn">⬆ Import</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== GHOST EDITOR OVERLAY ===== -->
+<div id="editor-overlay">
+
+    <!-- Editor Top Bar -->
+    <div class="editor-top-bar">
+        <div class="brand">
+            <div class="brand-icon" id="editor-file-icon">⬡</div>
+            <div>
+                <div class="brand-name" id="editor-file-name">untitled</div>
+                <div class="brand-sub" id="editor-file-path">no file open</div>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div class="editor-tabs">
+                <button class="tab-btn active" id="tab-code" title="Code View">⌨ Code</button>
+                <button class="tab-btn" id="tab-preview" title="Preview (HTML files only)">◈ Preview</button>
+            </div>
+            <button class="btn btn-folder" id="close-editor-btn" style="width:auto; margin:0; padding:8px 18px;">
+                ✓ Save & Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Boilerplate Inject Bar -->
+    <div class="inject-bar">
+        <span class="inject-label">Inject:</span>
+        <button class="btn-template" data-template="tailwind-shell">HTML Shell</button>
+        <button class="btn-template" data-template="web-audio">Web Audio</button>
+        <button class="btn-template" data-template="vanilla-module">ES Module</button>
+        <button class="btn-template" data-template="tailwind-component">Component</button>
+        <button class="btn-template" data-template="readme">README</button>
+        <button class="btn-template" data-template="package-json">package.json</button>
+    </div>
+
+    <!-- Code / Preview Body -->
+    <div class="editor-body" id="editor-code-view">
+        <div class="line-numbers" id="line-numbers">1</div>
+        <textarea id="editor-textarea" spellcheck="false" autocorrect="off" autocapitalize="off"
+            placeholder="// Start writing...&#10;// Tab key inserts 2 spaces"></textarea>
+    </div>
+
+    <div id="preview-container">
+        <iframe id="preview-iframe" sandbox="allow-scripts allow-same-origin" title="Live Preview"></iframe>
+        <!-- Ghost Console HUD -->
+        <div id="console-hud">
+            <div class="console-header">
+                <div class="console-title">
+                    ◈ Ghost Console
+                    <span class="console-badge" id="log-count">0</span>
+                </div>
+                <div class="console-actions">
+                    <button class="console-btn" id="console-clear-btn">Clear</button>
+                    <button class="console-btn" id="console-close-btn">Hide</button>
+                </div>
+            </div>
+            <div id="console-log-list"></div>
+        </div>
+    </div>
+
+    <!-- Editor Status Bar -->
+    <div class="editor-status">
+        <div class="status-item">
+            <span class="status-dot"></span>
+            <span id="status-save">Auto-saved</span>
+        </div>
+        <div class="status-item">
+            <span id="status-cursor">Ln 1, Col 1</span>
+        </div>
+        <div class="status-item">
+            <span id="status-chars">0 chars</span>
+        </div>
+        <div class="status-item" style="margin-left:auto;">
+            <button class="console-btn" id="console-toggle-btn" style="display:none;">⬡ Console</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== MAIN SHELL ===== -->
+<div class="shell">
+    <div class="top-bar">
+        <div class="brand">
+            <div class="brand-icon">◈</div>
+            <div>
+                <div class="brand-name">Project Architect</div>
+                <div class="brand-sub">ghost labs // structural tool</div>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn btn-import" id="open-import-btn" style="width:auto; padding:8px 16px; margin:0;">
+                ↑ Import
+            </button>
+            <button class="btn btn-export" id="download-zip-btn" style="width:auto; padding:8px 20px; margin:0;">
+                ↓ Export .ZIP
+            </button>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="panel-controls">
+            <div class="section-label">Target Path</div>
+            <div class="path-display" id="current-path">/</div>
+
+            <div class="section-label">New Folder</div>
+            <input type="text" class="neo-input" id="folder-name" placeholder="folder-name/">
+            <button class="btn btn-folder" id="add-folder-btn">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
+                Push Folder
+            </button>
+
+            <div class="section-label">New File</div>
+            <input type="text" class="neo-input" id="file-name" placeholder="filename.ext">
+            <button class="btn btn-file" id="add-file-btn">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Create File
+            </button>
+
+            <div class="divider"></div>
+            <button class="btn btn-danger" id="delete-item-btn" disabled>
+                ✕ Terminate Selection
+            </button>
+            <div class="spacer"></div>
+        </div>
+
+        <div class="panel-tree">
+            <div class="tree-header">
+                <span class="tree-title">Blueprint View</span>
+                <span class="tree-stats" id="tree-stats">0 folders · 0 files</span>
+            </div>
+            <div class="tree-scroll" id="file-tree"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* =============================================================
+   GHOST LABS — PROJECT ARCHITECT v2
+   ---------------------------------------------------------------
+   Module Map:
+     StateManager      — data model, content persistence
+     FileSystemUtils   — path helpers, sanitization
+     ImportParser      — indented text → nested object
+     Boilerplates      — code template library
+     DragDropManager   — drag-and-drop reordering
+     TreeRenderer      — DOM tree from state (read-only)
+     EditorController  — Ghost Editor: open, edit, auto-save
+     PreviewController — Blob iframe materializer
+     ConsoleService    — iframe console interceptor
+     Toast             — notification utility
+     UIController      — event wiring, lifecycle bootstrap
+   ============================================================= */
+
+// ---------------------------------------------------------------
+// STATE MANAGER
+// Single source of truth. Folders = objects. Files = strings.
+// ---------------------------------------------------------------
+const StateManager = (() => {
+    let _structure = {
+        'public':  { 'index.html': '', 'style.css': '' },
+        'src':     { 'components': {}, 'utils': {}, 'app.js': '', 'index.js': '' },
+        'package.json': '{}',
+        'README.md': ''
+    };
+    let _currentPath  = '/';
+    let _selectedPath = null;
+
+    return {
+        get structure()    { return _structure; },
+        get currentPath()  { return _currentPath; },
+        get selectedPath() { return _selectedPath; },
+
+        setCurrentPath(p)  { _currentPath = p; },
+        setSelectedPath(p) { _selectedPath = p; },
+        setStructure(s)    { _structure = s; },
+
+        /** Navigate to a node at path, returning it */
+        getNodeAt(path) {
+            const parts = path.split('/').filter(Boolean);
+            let node = _structure;
+            for (const part of parts) {
+                if (node == null || typeof node !== 'object') return null;
+                node = node[part];
+            }
+            return node === undefined ? null : node;
+        },
+
+        /** Get the parent object of a path */
+        getParentOf(path) {
+            const parts = path.split('/').filter(Boolean);
+            if (parts.length <= 1) return _structure;
+            parts.pop();
+            return this.getNodeAt('/' + parts.join('/'));
+        },
+
+        /** Write content string to a file node */
+        setNodeContent(path, content) {
+            const parent = this.getParentOf(path);
+            const name   = path.split('/').pop();
+            if (parent && typeof parent[name] !== 'object') {
+                parent[name] = content;
+                return true;
+            }
+            return false;
+        },
+
+        /** Read content string from a file node. Returns null for folders. */
+        getNodeContent(path) {
+            const node = this.getNodeAt(path);
+            return typeof node === 'string' ? node : null;
+        },
+
+        /** Count all folders and files recursively */
+        countItems(node = _structure) {
+            let folders = 0, files = 0;
+            for (const [, val] of Object.entries(node)) {
+                if (typeof val === 'object') {
+                    folders++;
+                    const sub = this.countItems(val);
+                    folders += sub.folders; files += sub.files;
+                } else { files++; }
+            }
+            return { folders, files };
+        },
+
+        /** Move a node from sourcePath into a folder at destPath */
+        moveNode(sourcePath, destPath) {
+            if (!sourcePath || sourcePath === '/' || sourcePath === destPath) return false;
+            if (destPath.startsWith(sourcePath + '/')) return false;
+
+            const sourceParent = this.getParentOf(sourcePath);
+            const sourceName   = sourcePath.split('/').pop();
+            const destNode     = this.getNodeAt(destPath);
+
+            if (!sourceParent || typeof destNode !== 'object') return false;
+            if (destNode[sourceName] !== undefined) return false;
+
+            destNode[sourceName] = sourceParent[sourceName];
+            delete sourceParent[sourceName];
+            return true;
+        }
+    };
+})();
+
+// ---------------------------------------------------------------
+// FILE SYSTEM UTILS
+// ---------------------------------------------------------------
+const FileSystemUtils = {
+    sanitize: (name) => name.replace(/[^a-zA-Z0-9._\-]/g, ''),
+    isFolder: (node)  => node !== null && typeof node === 'object',
+    join: (base, name) => (base === '/' ? '' : base) + '/' + name,
+    parentOf: (path) => {
+        const parts = path.split('/').filter(Boolean);
+        if (parts.length <= 1) return '/';
+        parts.pop();
+        return '/' + parts.join('/');
+    },
+    nameOf:   (path) => path.split('/').filter(Boolean).pop() || 'Root',
+    extOf:    (name) => name.includes('.') ? name.split('.').pop().toLowerCase() : ''
+};
+
+// ---------------------------------------------------------------
+// IMPORT PARSER
+// Parses indented tree text → nested object.
+// ---------------------------------------------------------------
+const ImportParser = {
+    parse(text) {
+        const lines = text.split('\n').filter(l => l.trim());
+        const root  = {};
+        const stack = [{ node: root, indent: -1 }];
+
+        for (const line of lines) {
+            const rawIndent = line.match(/^(\s*)/)[1];
+            const indent    = rawIndent.replace(/\t/g, '  ').length;
+            const trimmed   = line.trim();
+            const isFolder  = trimmed.endsWith('/');
+            const name      = trimmed.replace(/\/$/, '');
+            if (!name) continue;
+
+            while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+                stack.pop();
+            }
+            const parent = stack[stack.length - 1].node;
+
+            if (isFolder) {
+                parent[name] = {};
+                stack.push({ node: parent[name], indent });
+            } else {
+                parent[name] = '';
+            }
+        }
+        return root;
+    }
+};
+
+// ---------------------------------------------------------------
+// BOILERPLATES
+// Template library for quick injection. Extend freely.
+// ---------------------------------------------------------------
+const Boilerplates = {
+    'web-audio': `/**
+ * GHOST LABS // Real-time Web Audio Blueprint
+ * AnalyserNode + Canvas2D + requestAnimationFrame
+ * NOTE: initAudio() must be triggered by a user gesture on iOS.
+ */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let analyser, dataArray, canvas, ctx;
+
+async function initAudio() {
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    const bufferLength = analyser.frequencyBinCount;
+    dataArray = new Uint8Array(bufferLength);
+
+    canvas = document.querySelector('canvas');
+    ctx    = canvas.getContext('2d');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    render();
+}
+
+function render() {
+    requestAnimationFrame(render);
+    analyser.getByteFrequencyData(dataArray);
+
+    ctx.fillStyle = '#0e0e10';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const barWidth = (canvas.width / dataArray.length) * 2;
+    let x = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+        const barHeight = dataArray[i] / 255 * canvas.height;
+        const hue = (i / dataArray.length) * 280 + 200;
+        ctx.fillStyle = \`hsl(\${hue}, 80%, 60%)\`;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        x += barWidth + 1;
+    }
+}
+
+document.getElementById('start-btn')?.addEventListener('click', initAudio);`,
+
+    'tailwind-shell': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <title>Ghost Labs Project</title>
+</head>
+<body class="bg-[#0e0e10] text-[#d4d4df] min-h-screen flex items-center justify-center">
+    <main class="p-8 bg-[#161618] rounded-2xl shadow-2xl border border-white/5 max-w-lg w-full">
+        <h1 class="text-2xl font-bold text-[#E8C547] mb-2">Architected System</h1>
+        <p class="text-sm text-[#7a7a8a]">Ready for Ghost Labs deployment.</p>
+        <button id="start-btn"
+            class="mt-6 px-6 py-3 bg-[#1c1c1f] rounded-xl text-[#FF6B47] font-bold text-sm
+                   border border-white/5 hover:border-[#FF6B47]/40 transition-all">
+            Initialize
+        </button>
+    </main>
+    <script src="./app.js"><\/script>
+</body>
+</html>`,
+
+    'vanilla-module': `/**
+ * @module app
+ * Ghost Labs — ES2023+ Vanilla JS Module
+ */
+
+const App = (() => {
+    // Private state
+    let _state = {};
+
+    const init = () => {
+        console.log('[App] Initialized');
+        _bindEvents();
+    };
+
+    const _bindEvents = () => {
+        // Wire your DOM events here
+    };
+
+    const setState = (updates) => {
+        _state = { ..._state, ...updates };
+        _render();
+    };
+
+    const _render = () => {
+        // Sync state → DOM
+    };
+
+    return { init, setState };
+})();
+
+document.addEventListener('DOMContentLoaded', App.init);`,
+
+    'tailwind-component': `/**
+ * Ghost Labs — Reusable Web Component (no framework)
+ */
+class GhostCard extends HTMLElement {
+    connectedCallback() {
+        const label = this.getAttribute('label') || 'Component';
+        this.innerHTML = \`
+            <div style="
+                background:#1c1c1f; border:1px solid rgba(255,255,255,0.06);
+                border-radius:12px; padding:20px; color:#d4d4df;
+                font-family:sans-serif;
+            ">
+                <h3 style="color:#E8C547; margin:0 0 8px;">\${label}</h3>
+                <slot></slot>
+            </div>
+        \`;
+    }
+}
+customElements.define('ghost-card', GhostCard);`,
+
+    'readme': `# Project Name
+> Architected with Ghost Labs Structural Tool
+
+## Overview
+Brief description of what this project does.
+
+## Tech Stack
+- Vanilla JS ES2023+
+- TailwindCSS v3
+- Web Audio API (optional)
+
+## Structure
+\`\`\`
+src/
+  app.js        — Entry point
+  components/   — Reusable modules
+public/
+  index.html    — Shell
+\`\`\`
+
+## Getting Started
+\`\`\`bash
+# No build step required for Tailwind CDN projects
+open public/index.html
+\`\`\`
+
+## Deployment
+Push to GitHub → auto-deploy via Vercel.`,
+
+    'package-json': `{
+  "name": "ghost-labs-project",
+  "version": "1.0.0",
+  "description": "Architected with Ghost Labs",
+  "main": "src/app.js",
+  "scripts": {
+    "dev": "npx serve public",
+    "build": "echo \\"No build step required\\"",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["ghost-labs"],
+  "license": "MIT"
+}`
+};
+
+// ---------------------------------------------------------------
+// DRAG DROP MANAGER
+// ---------------------------------------------------------------
+const DragDropManager = (() => {
+    let _dragPath = null;
+    return {
+        startDrag(path) { _dragPath = path; },
+        endDrag()       { _dragPath = null; },
+        getDragPath()   { return _dragPath; },
+        handleDrop(targetPath, onSuccess) {
+            if (!_dragPath || _dragPath === targetPath) return;
+            if (StateManager.moveNode(_dragPath, targetPath)) onSuccess();
+            _dragPath = null;
+        }
+    };
+})();
+
+// ---------------------------------------------------------------
+// TREE RENDERER
+// Pure DOM renderer — never mutates state.
+// ---------------------------------------------------------------
+const TreeRenderer = {
+    render(container, onSelect, onDrop) {
+        container.innerHTML = '';
+        const { structure } = StateManager;
+        if (Object.keys(structure).length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">◌</div>
+                    <div class="empty-text">No files yet.<br>Use the controls to build your structure.</div>
+                </div>`;
+            return;
+        }
+        container.appendChild(this._buildNode(structure, '/', 'Root_Project', 0, onSelect, onDrop));
+    },
+
+    _buildNode(node, path, name, depth, onSelect, onDrop) {
+        const isRoot   = path === '/';
+        const isFolder = FileSystemUtils.isFolder(node);
+        const selected = StateManager.selectedPath === path;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tree-node';
+        wrapper.dataset.path = path;
+
+        const row = document.createElement('div');
+        row.className = 'tree-row' + (selected ? ' selected' : '');
+        row.dataset.path = path;
+
+        // Icon
+        const icon = document.createElement('span');
+        icon.className = 'tree-icon';
+        icon.textContent = isRoot ? '◈' : isFolder ? '▸' : this._fileIcon(name);
+
+        // Label
+        const label = document.createElement('span');
+        label.className = 'tree-name' + (isFolder ? '' : ' file-name');
+        label.textContent = isRoot ? 'Root_Project' : name;
+
+        row.appendChild(icon);
+        row.appendChild(label);
+
+        // Child count badge for non-root folders
+        if (isFolder && !isRoot) {
+            const count = Object.keys(node).length;
+            if (count > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'tree-badge';
+                badge.textContent = count;
+                row.appendChild(badge);
+            }
+        }
+
+        // Drag handle
+        if (!isRoot) {
+            const handle = document.createElement('span');
+            handle.className = 'drag-handle';
+            handle.innerHTML = '⠿';
+            row.appendChild(handle);
+        }
+
+        // Click to select
+        row.addEventListener('click', (e) => { e.stopPropagation(); onSelect(path, isFolder); });
+
+        // Drag source
+        if (!isRoot) {
+            row.setAttribute('draggable', 'true');
+            row.addEventListener('dragstart', (e) => {
+                DragDropManager.startDrag(path);
+                row.classList.add('drag-source');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            row.addEventListener('dragend', () => {
+                row.classList.remove('drag-source');
+                DragDropManager.endDrag();
+            });
+        }
+
+        // Drop target (folders only)
+        if (isFolder) {
+            row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drag-over'); });
+            row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+            row.addEventListener('drop', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                row.classList.remove('drag-over');
+                DragDropManager.handleDrop(path, onDrop);
+            });
+        }
+
+        wrapper.appendChild(row);
+
+        // Children — sorted: folders first, then alpha
+        if (isFolder && Object.keys(node).length > 0) {
+            const children = document.createElement('div');
+            children.className = 'tree-children';
+            const sorted = Object.entries(node).sort(([an, av], [bn, bv]) => {
+                const aDir = typeof av === 'object';
+                const bDir = typeof bv === 'object';
+                if (aDir && !bDir) return -1;
+                if (!aDir && bDir) return 1;
+                return an.localeCompare(bn);
+            });
+            for (const [childName, childNode] of sorted) {
+                const childPath = FileSystemUtils.join(path, childName);
+                children.appendChild(this._buildNode(childNode, childPath, childName, depth + 1, onSelect, onDrop));
+            }
+            wrapper.appendChild(children);
+        }
+        return wrapper;
+    },
+
+    _fileIcon(name) {
+        const ext = FileSystemUtils.extOf(name);
+        const map = {
+            js: '⬡', jsx: '⬡', ts: '⬡', tsx: '⬡', mjs: '⬡',
+            html: '◻', htm: '◻',
+            css: '◈', scss: '◈', sass: '◈',
+            json: '⊞', md: '≡', txt: '≡', env: '⚙',
+            png: '⬤', jpg: '⬤', jpeg: '⬤', svg: '⬤', gif: '⬤', webp: '⬤',
+            lock: '⚙', gitignore: '⚙', sh: '⚙'
+        };
+        return map[ext] || '⬡';
+    }
+};
+
+// ---------------------------------------------------------------
+// CONSOLE SERVICE
+// Generates injection code for iframe console interception.
+// ---------------------------------------------------------------
+const ConsoleService = {
+    _logCount: 0,
+
+    reset() { this._logCount = 0; this._updateBadge(); },
+
+    _updateBadge() {
+        const badge = document.getElementById('log-count');
+        if (badge) badge.textContent = this._logCount;
+    },
+
+    appendLog(message, type = 'log') {
+        this._logCount++;
+        this._updateBadge();
+        const list = document.getElementById('console-log-list');
+        if (!list) return;
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        const prefix = { log: '›', error: '✕', warn: '⚠', info: 'ℹ' }[type] || '›';
+        entry.innerHTML = `<span class="log-prefix">${prefix}</span>${this._escape(String(message))}`;
+        list.appendChild(entry);
+        list.scrollTop = list.scrollHeight;
+    },
+
+    _escape(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+
+    /**
+     * Returns a <script> block that intercepts console methods inside the iframe
+     * and posts messages to the parent window via postMessage (CSP-safe approach).
+     */
+    getInjectionCode() {
+        return `<script>
+(function() {
+    const _methods = ['log', 'error', 'warn', 'info'];
+    _methods.forEach(function(method) {
+        const orig = console[method].bind(console);
+        console[method] = function() {
+            const msg = Array.from(arguments).map(function(a) {
+                return typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a);
+            }).join(' ');
+            try { window.parent.postMessage({ type: 'ghost-console', method, msg }, '*'); } catch(e) {}
+            orig.apply(console, arguments);
+        };
+    });
+    window.onerror = function(msg, src, line) {
+        try { window.parent.postMessage({ type: 'ghost-console', method: 'error', msg: msg + ' (Ln ' + line + ')' }, '*'); } catch(e) {}
+        return false;
+    };
+    window.onunhandledrejection = function(e) {
+        try { window.parent.postMessage({ type: 'ghost-console', method: 'error', msg: 'Unhandled Promise: ' + (e.reason || e) }, '*'); } catch(e2) {}
+    };
+})();
+<\/script>`;
+    }
+};
+
+// ---------------------------------------------------------------
+// PREVIEW CONTROLLER
+// Materializes HTML files as Blob URLs into the iframe.
+// ---------------------------------------------------------------
+const PreviewController = (() => {
+    let _blobUrl = null;
+
+    const _iframe    = () => document.getElementById('preview-iframe');
+    const _container = () => document.getElementById('preview-container');
+    const _codeView  = () => document.getElementById('editor-code-view');
+    const _hud       = () => document.getElementById('console-hud');
+    const _toggleBtn = () => document.getElementById('console-toggle-btn');
+
+    const show = () => {
+        _container().classList.add('visible');
+        _codeView().style.display = 'none';
+        _toggleBtn().style.display = 'flex';
+        render();
+    };
+
+    const hide = () => {
+        _container().classList.remove('visible');
+        _codeView().style.display = '';
+        _toggleBtn().style.display = 'none';
+    };
+
+    const render = () => {
+        const path = EditorController.currentPath;
+        if (!path || !path.endsWith('.html')) {
+            Toast.show('Preview requires an .html file', 'error');
+            hide();
+            return;
+        }
+
+        // Revoke previous Blob to avoid memory leaks
+        if (_blobUrl) { URL.revokeObjectURL(_blobUrl); _blobUrl = null; }
+
+        ConsoleService.reset();
+
+        let html = StateManager.getNodeContent(path) || '';
+
+        // 1. Inject Ghost Console interceptor before </head> or at start
+        const injection = ConsoleService.getInjectionCode();
+        html = html.includes('</head>')
+            ? html.replace('</head>', injection + '</head>')
+            : injection + html;
+
+        // 2. Resolve relative <script src="./file.js"> → inline content
+        html = html.replace(/<script\s+src=["']\.\/(.*?)["']><\/script>/g, (match, fileName) => {
+            const parentPath = FileSystemUtils.parentOf(path);
+            const fullPath   = FileSystemUtils.join(parentPath, fileName);
+            const content    = StateManager.getNodeContent(fullPath);
+            return content != null ? `<script>${content}<\/script>` : match;
+        });
+
+        // 3. Resolve relative <link href="./file.css"> → inline <style>
+        html = html.replace(/<link\s+[^>]*href=["']\.\/(.*?)["'][^>]*>/g, (match, fileName) => {
+            const parentPath = FileSystemUtils.parentOf(path);
+            const fullPath   = FileSystemUtils.join(parentPath, fileName);
+            const content    = StateManager.getNodeContent(fullPath);
+            return content != null ? `<style>${content}<\/style>` : match;
+        });
+
+        _blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        _iframe().src = _blobUrl;
+    };
+
+    const toggleConsole = () => {
+        _hud().classList.toggle('open');
+    };
+
+    return { show, hide, render, toggleConsole };
+})();
+
+// ---------------------------------------------------------------
+// EDITOR CONTROLLER
+// Manages the Ghost Editor overlay lifecycle.
+// ---------------------------------------------------------------
+const EditorController = (() => {
+    let _currentPath = null;
+    let _saveTimer   = null;
+
+    const _overlay   = () => document.getElementById('editor-overlay');
+    const _textarea  = () => document.getElementById('editor-textarea');
+    const _lineNums  = () => document.getElementById('line-numbers');
+    const _nameEl    = () => document.getElementById('editor-file-name');
+    const _pathEl    = () => document.getElementById('editor-file-path');
+    const _iconEl    = () => document.getElementById('editor-file-icon');
+    const _statusSave= () => document.getElementById('status-save');
+    const _statusCur = () => document.getElementById('status-cursor');
+    const _statusChr = () => document.getElementById('status-chars');
+    const _tabCode   = () => document.getElementById('tab-code');
+    const _tabPrev   = () => document.getElementById('tab-preview');
+
+    /** Update the line number gutter to match textarea */
+    const _updateLineNumbers = (text) => {
+        const lines = (text + '\n').split('\n').length;
+        _lineNums().textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+    };
+
+    /** Update status bar info */
+    const _updateStatus = (text, selStart) => {
+        _statusChr().textContent = `${text.length} chars`;
+        const before = text.substring(0, selStart);
+        const lines  = before.split('\n');
+        _statusCur().textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+    };
+
+    /** Debounced auto-save back to StateManager */
+    const _scheduleAutoSave = (content) => {
+        _statusSave().textContent = 'Saving...';
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(() => {
+            if (_currentPath) {
+                StateManager.setNodeContent(_currentPath, content);
+                _statusSave().textContent = 'Auto-saved';
+            }
+        }, 400);
+    };
+
+    const open = (path) => {
+        const content = StateManager.getNodeContent(path);
+        if (content === null) return; // folders are not editable
+
+        _currentPath = path;
+        const name = FileSystemUtils.nameOf(path);
+        const ext  = FileSystemUtils.extOf(name);
+
+        _nameEl().textContent = name;
+        _pathEl().textContent = path;
+        _iconEl().textContent = TreeRenderer._fileIcon(name);
+
+        const ta = _textarea();
+        ta.value = content;
+        _updateLineNumbers(content);
+        _updateStatus(content, 0);
+
+        // Switch to code view when opening
+        _setTab('code');
+
+        // Disable preview tab for non-HTML files
+        _tabPrev().disabled = ext !== 'html';
+        _tabPrev().style.opacity = ext !== 'html' ? '0.35' : '1';
+
+        _overlay().classList.add('open');
+
+        // Focus textarea with slight delay for iOS animation
+        setTimeout(() => ta.focus(), 350);
+    };
+
+    const close = () => {
+        // Final save before closing
+        if (_currentPath) {
+            StateManager.setNodeContent(_currentPath, _textarea().value);
+        }
+        _overlay().classList.remove('open');
+        _currentPath = null;
+        PreviewController.hide();
+    };
+
+    const inject = (templateKey) => {
+        const template = Boilerplates[templateKey];
+        if (!template) return;
+        if (_textarea().value.trim() && !confirm(`Overwrite current content with "${templateKey}" template?`)) return;
+        _textarea().value = template;
+        _updateLineNumbers(template);
+        if (_currentPath) StateManager.setNodeContent(_currentPath, template);
+        // Flash ring to confirm injection
+        _textarea().style.outline = '2px solid var(--gold)';
+        setTimeout(() => { _textarea().style.outline = ''; }, 500);
+        Toast.show(`Template "${templateKey}" injected`, 'success');
+    };
+
+    const _setTab = (tab) => {
+        if (tab === 'code') {
+            _tabCode().classList.add('active');
+            _tabPrev().classList.remove('active');
+            PreviewController.hide();
+        } else {
+            _tabPrev().classList.add('active');
+            _tabCode().classList.remove('active');
+            PreviewController.show();
+        }
+    };
+
+    const init = () => {
+        const ta = _textarea();
+
+        // Auto-save on input + update line numbers + status
+        ta.addEventListener('input', () => {
+            const val = ta.value;
+            _updateLineNumbers(val);
+            _scheduleAutoSave(val);
+        });
+
+        // Cursor position tracking
+        ta.addEventListener('click', () => _updateStatus(ta.value, ta.selectionStart));
+        ta.addEventListener('keyup',  () => _updateStatus(ta.value, ta.selectionStart));
+
+        // Sync line numbers scroll with textarea
+        ta.addEventListener('scroll', () => {
+            _lineNums().scrollTop = ta.scrollTop;
+        });
+
+        // Tab key → insert 2 spaces (not lose focus)
+        ta.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = ta.selectionStart;
+                const end   = ta.selectionEnd;
+                ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
+                ta.selectionStart = ta.selectionEnd = start + 2;
+                _updateLineNumbers(ta.value);
+                _scheduleAutoSave(ta.value);
+            }
+        });
+
+        // Close button
+        document.getElementById('close-editor-btn').addEventListener('click', close);
+
+        // Tab switching
+        _tabCode().addEventListener('click', () => _setTab('code'));
+        _tabPrev().addEventListener('click', () => _setTab('preview'));
+
+        // Boilerplate inject buttons
+        document.querySelectorAll('.btn-template').forEach(btn => {
+            btn.addEventListener('click', () => inject(btn.dataset.template));
+        });
+
+        // Console controls
+        document.getElementById('console-toggle-btn').addEventListener('click', PreviewController.toggleConsole);
+        document.getElementById('console-close-btn').addEventListener('click', () => {
+            document.getElementById('console-hud').classList.remove('open');
+        });
+        document.getElementById('console-clear-btn').addEventListener('click', () => {
+            document.getElementById('console-log-list').innerHTML = '';
+            ConsoleService.reset();
+        });
+
+        // postMessage listener for iframe → Ghost Console
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'ghost-console') {
+                ConsoleService.appendLog(e.data.msg, e.data.method);
+                // Auto-open console on first message
+                const hud = document.getElementById('console-hud');
+                if (!hud.classList.contains('open')) hud.classList.add('open');
+            }
+        });
+    };
+
+    return { init, open, close, inject, get currentPath() { return _currentPath; } };
+})();
+
+// ---------------------------------------------------------------
+// TOAST
+// ---------------------------------------------------------------
+const Toast = {
+    _timer: null,
+    show(message, type = 'info') {
+        const el = document.getElementById('toast');
+        el.textContent = message;
+        el.className = `toast ${type} show`;
+        clearTimeout(this._timer);
+        this._timer = setTimeout(() => el.classList.remove('show'), 2400);
+    }
+};
+
+// ---------------------------------------------------------------
+// UI CONTROLLER
+// Bootstraps the app, wires all events, manages lifecycle.
+// ---------------------------------------------------------------
+const UIController = (() => {
+
+    const $ = (id) => document.getElementById(id);
+
+    const render = () => {
+        TreeRenderer.render($('file-tree'), onNodeSelect, onDrop);
+        _updateStatusBar();
+    };
+
+    const _updateStatusBar = () => {
+        $('current-path').textContent = StateManager.currentPath;
+        const { folders, files } = StateManager.countItems();
+        $('tree-stats').textContent = `${folders} folder${folders !== 1 ? 's' : ''} · ${files} file${files !== 1 ? 's' : ''}`;
+        const hasSel = !!StateManager.selectedPath && StateManager.selectedPath !== '/';
+        $('delete-item-btn').disabled = !hasSel;
+    };
+
+    /** Node clicked in tree */
+    const onNodeSelect = (path, isFolder) => {
+        StateManager.setSelectedPath(path);
+        if (isFolder) {
+            StateManager.setCurrentPath(path);
+            render();
+        } else {
+            StateManager.setCurrentPath(FileSystemUtils.parentOf(path));
+            render();
+            // Open editor for files
+            EditorController.open(path);
+        }
+    };
+
+    /** Drag drop completed */
+    const onDrop = () => {
+        Toast.show('Node moved', 'success');
+        StateManager.setSelectedPath(null);
+        render();
+    };
+
+    const addFolder = () => {
+        const name = FileSystemUtils.sanitize($('folder-name').value.trim());
+        if (!name) { Toast.show('Enter a folder name', 'error'); return; }
+        const parent = StateManager.getNodeAt(StateManager.currentPath);
+        if (!FileSystemUtils.isFolder(parent)) { Toast.show('Select a folder target first', 'error'); return; }
+        if (parent[name] !== undefined) { Toast.show(`"${name}" already exists`, 'error'); return; }
+        parent[name] = {};
+        $('folder-name').value = '';
+        Toast.show(`Folder "${name}" created`, 'success');
+        render();
+    };
+
+    const addFile = () => {
+        const name = FileSystemUtils.sanitize($('file-name').value.trim());
+        if (!name) { Toast.show('Enter a file name', 'error'); return; }
+        const parent = StateManager.getNodeAt(StateManager.currentPath);
+        if (!FileSystemUtils.isFolder(parent)) { Toast.show('Select a folder target first', 'error'); return; }
+        if (parent[name] !== undefined) { Toast.show(`"${name}" already exists`, 'error'); return; }
+        parent[name] = '';
+        $('file-name').value = '';
+        Toast.show(`File "${name}" created`, 'success');
+        render();
+    };
+
+    const deleteSelected = () => {
+        const path = StateManager.selectedPath;
+        if (!path || path === '/') return;
+        const name   = FileSystemUtils.nameOf(path);
+        const parent = StateManager.getParentOf(path);
+        delete parent[name];
+        StateManager.setSelectedPath(null);
+        StateManager.setCurrentPath(FileSystemUtils.parentOf(path));
+        Toast.show(`"${name}" removed`, 'info');
+        render();
+    };
+
+    const downloadZip = () => {
+        const zip = new JSZip();
+        const addToZip = (obj, prefix) => {
+            Object.entries(obj).forEach(([name, val]) => {
+                const cur = prefix ? `${prefix}/${name}` : name;
+                if (typeof val === 'object') addToZip(val, cur);
+                else zip.file(cur, val || '');
+            });
+        };
+        addToZip(StateManager.structure, '');
+        zip.generateAsync({ type: 'blob' }).then(content => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(content);
+            a.download = 'ghost_project.zip';
+            a.click();
+        });
+    };
+
+    const openImport = () => {
+        $('import-modal').classList.add('open');
+        setTimeout(() => $('import-textarea').focus(), 200);
+    };
+
+    const closeImport = () => {
+        $('import-modal').classList.remove('open');
+        $('import-textarea').value = '';
+    };
+
+    const confirmImport = () => {
+        const text = $('import-textarea').value.trim();
+        if (!text) { Toast.show('Paste a structure first', 'error'); return; }
+        try {
+            const parsed = ImportParser.parse(text);
+            if (Object.keys(parsed).length === 0) throw new Error('Empty');
+            // Deep merge into existing structure
+            const deepMerge = (target, source) => {
+                for (const [k, v] of Object.entries(source)) {
+                    if (typeof v === 'object' && typeof target[k] === 'object') {
+                        deepMerge(target[k], v);
+                    } else { target[k] = v; }
+                }
+            };
+            deepMerge(StateManager.structure, parsed);
+            closeImport();
+            const { folders, files } = StateManager.countItems(parsed);
+            Toast.show(`Imported: ${folders} folders, ${files} files`, 'success');
+            render();
+        } catch(e) {
+            Toast.show('Could not parse — check your format', 'error');
+        }
+    };
+
+    /** Global keyboard shortcuts */
+    const handleKeyboard = (e) => {
+        const inInput = ['INPUT','TEXTAREA'].includes(document.activeElement.tagName);
+        if (!inInput) {
+            if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+        }
+        if (inInput && e.target.id === 'folder-name' && e.key === 'Enter') addFolder();
+        if (inInput && e.target.id === 'file-name'   && e.key === 'Enter') addFile();
+        if (e.key === 'Escape') { closeImport(); }
+        // Cmd/Ctrl+S in editor = save (already auto-saved, but gives explicit feedback)
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+            if (document.getElementById('editor-overlay').classList.contains('open')) {
+                e.preventDefault();
+                if (EditorController.currentPath) {
+                    StateManager.setNodeContent(
+                        EditorController.currentPath,
+                        document.getElementById('editor-textarea').value
+                    );
+                    Toast.show('Saved', 'success');
+                }
+            }
+        }
+    };
+
+    const init = () => {
+        $('add-folder-btn').addEventListener('click', addFolder);
+        $('add-file-btn').addEventListener('click', addFile);
+        $('delete-item-btn').addEventListener('click', deleteSelected);
+        $('download-zip-btn').addEventListener('click', downloadZip);
+        $('open-import-btn').addEventListener('click', openImport);
+        $('import-confirm-btn').addEventListener('click', confirmImport);
+        $('import-cancel-btn').addEventListener('click', closeImport);
+        $('import-modal').addEventListener('click', (e) => {
+            if (e.target === $('import-modal')) closeImport();
+        });
+        document.addEventListener('keydown', handleKeyboard);
+
+        EditorController.init();
+        render();
+    };
+
+    return { init };
+})();
+
+// ---------------------------------------------------------------
+// BOOTSTRAP
+// ---------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', UIController.init);
+</script>
+</body>
+</html>
