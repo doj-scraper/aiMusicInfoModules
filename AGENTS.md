@@ -182,3 +182,47 @@ Requires support for:
 - Add localStorage persistence option
 - Add GitHub Gist import/export
 - Add multiple file editing with tabs
+
+## Improvement Suggestions
+
+### 1. Enhanced Editor Features
+- **Syntax Highlighting**: Integrate a lightweight syntax highlighter like Prism.js to improve code readability
+- **Line Numbers**: Currently present, but could include line highlighting for errors/warnings
+- **Auto-completion**: Implement basic code completion for common elements
+- **Bracket Matching**: Visual indication of matching parentheses, brackets, and braces
+- **Multiple File Tabs**: Allow opening multiple files simultaneously in separate tabs
+
+### 2. Improved File Management
+- **Search and Replace**: Add global search across all files and find/replace within files
+- **File Filtering**: Ability to filter files in the tree view
+- **Recent Files**: Track recently opened files for quick access
+- **File Templates**: Expand boilerplate templates to include more project types (React, Vue, Node.js, etc.)
+
+### 3. Advanced Preview Capabilities
+- **Device Simulation**: Add mobile/tablet preview modes
+- **Split View**: Allow side-by-side editing and preview
+- **Live Reload**: Auto-refresh preview when files are modified
+- **Console Enhancements**: Better filtering and organization of console messages
+
+### 4. Project Persistence
+- **Local Storage**: Save projects to browser's local storage for persistence
+- **Cloud Integration**: Add GitHub Gist integration for sharing projects
+- **Version Control**: Simple version history within the editor
+- **Project Templates**: Save and load complete project templates
+
+### 5. Developer Experience Improvements
+- **Keyboard Shortcuts**: Add more shortcuts for common actions
+- **Snippets**: Code snippet support for faster development
+- **Error Detection**: Basic syntax error checking without a full linter
+- **Performance Monitoring**: Show performance metrics for the generated projects
+
+### 6. UI/UX Enhancements
+- **Dark/Light Theme**: Option to switch between themes
+- **Customizable Layout**: Allow users to adjust panel sizes
+- **Better File Icons**: More descriptive icons for different file types
+- **Accessibility**: Improve keyboard navigation and screen reader support
+
+### 7. Collaboration Features
+- **Export Options**: Additional export formats (Git repository structure, different archive formats)
+- **Sharing**: Easy sharing mechanisms for collaborative work
+- **Import Enhancements**: Import from GitHub repositories or other sources
